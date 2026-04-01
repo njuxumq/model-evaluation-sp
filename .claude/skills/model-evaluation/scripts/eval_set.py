@@ -430,6 +430,23 @@ def cmd_submit(args):
     return {"evalset_id": evalset_id, "total": len(items)}
 
 
+def cmd_list_models(args):
+    """获取可用推理模型列表"""
+    config_result = load_config_kv(args.config)
+    if not config_result.get("success"):
+        raise ValueError(f"配置文件加载失败: {config_result.get('message')}")
+    config = config_result.get("data", {})
+
+    # 使用 TokenManager 和 ApiClient
+    token_manager = TokenManager(args.auth)
+    client = ApiClient(token_manager, config.get('base_url', 'http://127.0.0.1:8080'))
+
+    models = client.get_models()
+
+    save_json(args.output, {"models": models})
+    return {"models": models, "output": args.output}
+
+
 # ============================================================================
 # 批次提交（流式处理）
 # ============================================================================
@@ -586,6 +603,13 @@ def main():
     p.add_argument('--output', required=True, help='输出文件路径')
     p.set_defaults(func=cmd_submit)
 
+    # list-models
+    p = subparsers.add_parser('list-models', help='获取可用推理模型列表')
+    p.add_argument('--auth', required=True, help='鉴权信息文件')
+    p.add_argument('--config', required=True, help='服务配置文件')
+    p.add_argument('--output', required=True, help='输出文件路径')
+    p.set_defaults(func=cmd_list_models)
+
     # expand
     p = subparsers.add_parser('expand', help='展开评测集（answer为空场景）')
     p.add_argument('--input', required=True, help='原始评测集文件路径')
@@ -598,7 +622,7 @@ def main():
 
     # Python 3.6 兼容：手动检查子命令
     if args.command is None:
-        parser.error("请指定子命令: analysis, normalize, expand, submit")
+        parser.error("请指定子命令: analysis, normalize, expand, submit, list-models")
 
     try:
         result_obj = args.func(args)
