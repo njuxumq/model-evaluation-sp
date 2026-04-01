@@ -226,6 +226,25 @@ cp {skill-dir}/assets/eval-judge.json {work-dir}/.eval/{session-id}/eval-judge.j
 
 #### 步骤3：标准化转换
 
+**判断**：检查解析流程输出文件。
+
+| 输出文件 | 评测集类型 | 标准化命令 |
+|----------|------------|------------|
+| `selected-models.json` 存在 | 只有问题 | `expand` 子命令 |
+| 仅 `evalset-fields-mapping.json` 存在 | 问题+答案 | `normalize` 子命令 |
+
+**只有问题场景**：
+
+```bash
+{python-env}{python-cmd} {skill-dir}/scripts/eval_set.py expand \
+  --input {work-dir}/.eval/{session-id}/evalset/evalset-prepared.{ext} \
+  --mapping {work-dir}/.eval/{session-id}/evalset/evalset-fields-mapping.json \
+  --models {work-dir}/.eval/{session-id}/evalset/selected-models.json \
+  --output {work-dir}/.eval/{session-id}/evalset/evalset-standard.jsonl
+```
+
+**问题+答案场景**：
+
 ```bash
 {python-env}{python-cmd} {skill-dir}/scripts/eval_set.py normalize \
   --input {work-dir}/.eval/{session-id}/evalset/evalset-prepared.{ext} \
