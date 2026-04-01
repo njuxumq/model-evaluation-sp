@@ -120,6 +120,81 @@ def is_empty_value(value) -> bool:
     return False
 
 
+def extract_field_value(item: dict, mapping: dict, field_name: str) -> str:
+    """根据映射配置提取字段值
+
+    Args:
+        item: 原始数据项
+        mapping: 字段映射配置
+        field_name: 标准字段名
+
+    Returns:
+        字段值（字符串）
+    """
+    config = mapping.get(field_name, {})
+    if isinstance(config, str):
+        # 兼容旧格式
+        src_field = config
+        default_val = None
+    else:
+        src_field = config.get('source_field')
+        default_val = config.get('default')
+
+    if src_field and src_field in item:
+        value = item.get(src_field)
+        if value is not None and not (isinstance(value, float) and math.isnan(value)):
+            return str(value).strip()
+
+    if default_val:
+        return str(default_val)
+
+    return ""
+
+
+def expand_data(data: list, mapping: dict, models: list) -> list:
+    """展开评测集：N问题 × M模型 = N×M条记录
+
+    Args:
+        data: 原始评测集数据
+        mapping: 字段映射配置
+        models: 用户选择的模型列表
+
+    Returns:
+        展开后的标准化评测集
+    """
+    result = []
+    case_counter = 0
+    question_to_case = {}
+
+    for item in data:
+        question = extract_field_value(item, mapping, 'question')
+        if not question:
+            continue
+
+        # 生成 case_id（同一问题共享）
+        if question not in question_to_case:
+            case_counter += 1
+            question_to_case[question] = f'case-{case_counter:04d}'
+        case_id = question_to_case[question]
+
+        # 为每个模型生成一条记录
+        for model in models:
+            record = {
+                "question": question,
+                "answer": "",  # 空字符串，由推理服务填充
+                "model": model,
+                "case_id": case_id
+            }
+            # 添加可选字段
+            for field in OPTIONAL_FIELDS:
+                value = extract_field_value(item, mapping, field)
+                if value:
+                    record[field] = value
+            result.append(record)
+
+    return result
+
+
 def normalize_data(data: list, mapping: dict) -> list:
     """根据字段映射将数据转为标准格式
 
@@ -248,6 +323,52 @@ def cmd_normalize(args):
     Path(args.output).write_text('\n'.join(json.dumps(item, ensure_ascii=False) for item in normalized), encoding='utf-8')
 
     return {"success": True, "input_rows": len(data), "output_rows": len(normalized), "output_file": args.output}
+
+
+def cmd_expand(args):
+    """展开评测集（answer 为空场景）"""
+    # 加载原始数据
+    load_result = load_data(args.input)
+    if not load_result.get("success"):
+        raise ValueError(f"数据加载失败: {load_result.get('message')}")
+    data = load_result.get("data", {}).get("items", [])
+    if not data:
+        raise ValueError("评测集为空或无法解析")
+
+    # 加载映射配置
+    mapping_result = load_json(args.mapping)
+    if not mapping_result.get("success"):
+        raise ValueError(f"映射文件加载失败: {mapping_result.get('message')}")
+    mapping = mapping_result.get("data", {})
+
+    # 加载用户选择的模型列表
+    models_result = load_json(args.models)
+    if not models_result.get("success"):
+        raise ValueError(f"模型列表文件加载失败: {models_result.get('message')}")
+    models_data = models_result.get("data", {})
+    models = models_data.get("models", [])
+    if not models:
+        raise ValueError("模型列表为空")
+
+    # 展开数据
+    expanded = expand_data(data, mapping, models)
+    if not expanded:
+        raise ValueError("展开后的评测集为空")
+
+    # 输出 JSONL
+    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.output).write_text(
+        '\n'.join(json.dumps(item, ensure_ascii=False) for item in expanded),
+        encoding='utf-8'
+    )
+
+    return {
+        "success": True,
+        "input_rows": len(data),
+        "output_rows": len(expanded),
+        "models": models,
+        "output_file": args.output
+    }
 
 
 # ============================================================================
@@ -465,11 +586,19 @@ def main():
     p.add_argument('--output', required=True, help='输出文件路径')
     p.set_defaults(func=cmd_submit)
 
+    # expand
+    p = subparsers.add_parser('expand', help='展开评测集（answer为空场景）')
+    p.add_argument('--input', required=True, help='原始评测集文件路径')
+    p.add_argument('--mapping', required=True, help='字段映射文件路径')
+    p.add_argument('--models', required=True, help='用户选择的模型列表文件')
+    p.add_argument('--output', required=True, help='输出文件路径')
+    p.set_defaults(func=cmd_expand)
+
     args = parser.parse_args()
 
     # Python 3.6 兼容：手动检查子命令
     if args.command is None:
-        parser.error("请指定子命令: analysis, normalize, submit")
+        parser.error("请指定子命令: analysis, normalize, expand, submit")
 
     try:
         result_obj = args.func(args)
