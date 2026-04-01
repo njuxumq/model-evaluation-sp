@@ -27,6 +27,37 @@ from clients import (
 )
 
 
+def analyze_answer_field(data: list, fields: dict) -> dict:
+    """分析 answer 字段状态
+
+    Args:
+        data: 评测集数据列表
+        fields: 字段信息字典
+
+    Returns:
+        {"exists": bool, "status": "all_empty"|"partial"|"all_filled"}
+    """
+    if 'answer' not in fields:
+        return {"exists": False, "status": "all_empty"}
+
+    # 检查所有 answer 值
+    empty_count = 0
+    for item in data:
+        answer_value = item.get('answer')
+        if is_empty_value(answer_value):
+            empty_count += 1
+
+    total = len(data)
+    if empty_count == total:
+        status = "all_empty"
+    elif empty_count == 0:
+        status = "all_filled"
+    else:
+        status = "partial"
+
+    return {"exists": True, "status": status}
+
+
 def cmd_analysis(args):
     """解析评测集文件结构，输出结构文件
 
@@ -41,12 +72,16 @@ def cmd_analysis(args):
 
     fields = extract_fields(data)
 
+    # 分析 answer 字段状态
+    answer_info = analyze_answer_field(data, fields)
+
     # 结构文件：唯一产物
     structure = {
         "file": args.input,
         "format": Path(args.input).suffix.lower()[1:],
         "total_rows": len(data),
-        "fields": fields
+        "fields": fields,
+        "answer": answer_info
     }
     save_json(args.output, structure)
 
