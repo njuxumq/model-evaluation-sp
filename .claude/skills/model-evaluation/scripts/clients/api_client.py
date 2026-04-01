@@ -121,3 +121,12 @@ class ApiClient(BaseHttpClient):
             response.raise_for_status()
 
         return result.get('data', {})
+
+    def get_models(self) -> list:
+        """获取可用推理模型列表
+
+        Returns:
+            模型名称列表，如 ["deepseek-r1", "gpt-4", "claude-3"]
+        """
+        response = self.get("/open/api/v1/models")
+        return response.get("models", [])
