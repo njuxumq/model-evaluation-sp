@@ -27,37 +27,6 @@ from clients import (
 )
 
 
-def analyze_answer_field(data: list, fields: dict) -> dict:
-    """分析 answer 字段状态
-
-    Args:
-        data: 评测集数据列表
-        fields: 字段信息字典
-
-    Returns:
-        {"exists": bool, "status": "all_empty"|"partial"|"all_filled"}
-    """
-    if 'answer' not in fields:
-        return {"exists": False, "status": "all_empty"}
-
-    # 检查所有 answer 值
-    empty_count = 0
-    for item in data:
-        answer_value = item.get('answer')
-        if is_empty_value(answer_value):
-            empty_count += 1
-
-    total = len(data)
-    if empty_count == total:
-        status = "all_empty"
-    elif empty_count == 0:
-        status = "all_filled"
-    else:
-        status = "partial"
-
-    return {"exists": True, "status": status}
-
-
 def cmd_analysis(args):
     """解析评测集文件结构，输出结构文件
 
@@ -72,16 +41,12 @@ def cmd_analysis(args):
 
     fields = extract_fields(data)
 
-    # 分析 answer 字段状态
-    answer_info = analyze_answer_field(data, fields)
-
     # 结构文件：唯一产物
     structure = {
         "file": args.input,
         "format": Path(args.input).suffix.lower()[1:],
         "total_rows": len(data),
-        "fields": fields,
-        "answer": answer_info
+        "fields": fields
     }
     save_json(args.output, structure)
 
@@ -91,6 +56,43 @@ def cmd_analysis(args):
         "fields": list(fields.keys()),
         "structure_file": args.output
     }
+
+
+def analyze_answer_with_mapping(data: list, mapping: dict) -> dict:
+    """结合映射配置分析 answer 字段状态
+
+    Args:
+        data: 原始评测集数据列表
+        mapping: 字段映射配置（已确认）
+
+    Returns:
+        {"exists": bool, "source_field": str|null, "status": "all_empty"|"partial"|"all_filled"}
+    """
+    answer_config = mapping.get('answer', {})
+    if isinstance(answer_config, str):
+        source_field = answer_config
+    else:
+        source_field = answer_config.get('source_field')
+
+    if not source_field:
+        return {"exists": False, "source_field": None, "status": "all_empty"}
+
+    # 检查原始数据中该字段状态
+    empty_count = 0
+    for item in data:
+        answer_value = item.get(source_field)
+        if is_empty_value(answer_value):
+            empty_count += 1
+
+    total = len(data)
+    if empty_count == total:
+        status = "all_empty"
+    elif empty_count == 0:
+        status = "all_filled"
+    else:
+        status = "partial"
+
+    return {"exists": True, "source_field": source_field, "status": status}
 
 
 # ============================================================================
@@ -447,6 +449,75 @@ def cmd_list_models(args):
     return {"models": models, "output": args.output}
 
 
+def analyze_field_with_mapping(data: list, mapping: dict, field_name: str) -> dict:
+    """结合映射配置分析单个字段状态
+
+    Args:
+        data: 原始评测集数据列表
+        mapping: 字段映射配置
+        field_name: 标准字段名（answer/model/case_id）
+
+    Returns:
+        {"exists": bool, "source_field": str|null, "status": "all_empty"|"partial"|"all_filled"}
+    """
+    config = mapping.get(field_name, {})
+    if isinstance(config, str):
+        source_field = config
+    else:
+        source_field = config.get('source_field')
+
+    if not source_field:
+        return {"exists": False, "source_field": None, "status": "all_empty"}
+
+    # 检查原始数据中该字段状态
+    empty_count = 0
+    for item in data:
+        value = item.get(source_field)
+        if is_empty_value(value):
+            empty_count += 1
+
+    total = len(data)
+    if empty_count == total:
+        status = "all_empty"
+    elif empty_count == 0:
+        status = "all_filled"
+    else:
+        status = "partial"
+
+    return {"exists": True, "source_field": source_field, "status": status}
+
+
+def cmd_check_status(args):
+    """检查关键字段状态（结合映射配置）
+
+    分析 answer、model、case_id 字段的填充状态，
+    用于判断后续处理分支。
+    """
+    # 加载原始数据
+    load_result = load_data(args.input)
+    if not load_result.get("success"):
+        raise ValueError(f"数据加载失败: {load_result.get('message')}")
+    data = load_result.get("data", {}).get("items", [])
+    if not data:
+        raise ValueError("评测集为空或无法解析")
+
+    # 加载映射配置
+    mapping_result = load_json(args.mapping)
+    if not mapping_result.get("success"):
+        raise ValueError(f"映射文件加载失败: {mapping_result.get('message')}")
+    mapping = mapping_result.get("data", {})
+
+    # 分析关键字段状态
+    result = {
+        "answer": analyze_field_with_mapping(data, mapping, 'answer'),
+        "model": analyze_field_with_mapping(data, mapping, 'model'),
+        "case_id": analyze_field_with_mapping(data, mapping, 'case_id')
+    }
+
+    save_json(args.output, result)
+    return {"status": result, "output": args.output}
+
+
 # ============================================================================
 # 批次提交（流式处理）
 # ============================================================================
@@ -617,6 +688,13 @@ def main():
     p.add_argument('--models', required=True, help='用户选择的模型列表文件')
     p.add_argument('--output', required=True, help='输出文件路径')
     p.set_defaults(func=cmd_expand)
+
+    # check-status
+    p = subparsers.add_parser('check-status', help='检查关键字段状态')
+    p.add_argument('--input', required=True, help='原始评测集文件路径')
+    p.add_argument('--mapping', required=True, help='字段映射文件路径')
+    p.add_argument('--output', required=True, help='输出文件路径')
+    p.set_defaults(func=cmd_check_status)
 
     args = parser.parse_args()
 
