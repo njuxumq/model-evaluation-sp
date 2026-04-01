@@ -25,25 +25,105 @@ description: Use when user has an evaluation dataset file and needs to parse, an
 | 步骤1-3 | 解析与映射 | 始终执行 |
 | 步骤4 | 判断后续走向 | 始终执行 |
 | 分支A | 模型选择 | answer 为空时执行 |
-| 分支B | 字段校验 | answer 非空时执行 |
+| 分支B | 字段校验与确认 | answer 非空时执行 |
 
 ---
 
 ## 步骤1：获取评测集文件
 
-检查文件存在、复制/下载到工作目录。
+**判断**：`evalset-prepared.{ext}` 是否存在？
+
+| 状态 | 动作 |
+|------|------|
+| 已存在 | → 步骤2 |
+| 不存在 | 获取用户文件 |
+
+获取文件命令：
+
+```bash
+# 复制用户文件
+cp {用户路径} {work-dir}/.eval/{session-id}/evalset/evalset-prepared.{ext}
+
+# 或远程下载
+curl -o {work-dir}/.eval/{session-id}/evalset/evalset-prepared.{ext} {下载链接}
+```
+
+> `{ext}` 从文件路径提取（如 `data.xlsx` → `ext=xlsx`）。
 
 ---
 
 ## 步骤2：解析字段结构
 
-调用 `analysis` 子命令解析结构，输出新增 `answer` 字段。
+**判断**：`evalset-structure.json` 是否存在？
+
+| 状态 | 动作 |
+|------|------|
+| 已存在 | → 步骤3 |
+| 不存在 | 执行解析 |
+
+解析命令：
+
+```bash
+{python-env}{python-cmd} {skill-dir}/scripts/eval_set.py analysis \
+  --input {work-dir}/.eval/{session-id}/evalset/evalset-prepared.{ext} \
+  --output {work-dir}/.eval/{session-id}/evalset/evalset-structure.json
+```
+
+**输出说明**：
+
+| 字段 | 说明 |
+|------|------|
+| `file` | 文件路径 |
+| `format` | 文件格式（json/jsonl/csv/xlsx） |
+| `total_rows` | 总行数 |
+| `fields` | 字段信息（字段名+类型） |
+| `answer` | answer 字段状态（新增） |
 
 ---
 
 ## 步骤3：生成初始映射
 
-根据字段匹配关键词表生成映射配置。
+**判断**：`evalset-fields-mapping.json` 是否存在？
+
+| 状态 | 动作 |
+|------|------|
+| 已存在 | → 步骤4 |
+| 不存在 | 生成映射 |
+
+读取结构文件 → 匹配字段 → 生成映射配置。
+
+### 字段匹配关键词表
+
+| 标准字段 | 含义 | 匹配关键词 | 匹配规则 |
+|----------|------|------------|----------|
+| question | 评测输入问题 | question, prompt, input, query, 问题, 提问 | 精确优先，包含次之 |
+| answer | 模型实际回答 | answer, response, output, reply, 回答, 回复 | 精确优先，包含次之 |
+| model | 生成回答的模型标识 | model, model_name, model_id, llm, llm_name, 模型, 模型名称 | 精确优先，包含次之 |
+| case_id | 用例唯一标识，用于关联同一问题的多模型回答 | case_id, caseid, 用例id | **仅精确匹配**，未命中时用户确认 |
+| system | 系统提示词 | system, system_prompt, 系统提示 | 精确优先，包含次之 |
+| context | 附加上下文信息 | context, 上下文 | 精确优先，包含次之 |
+| category | 用例分类标签 | category, type, 分类, 类别 | 精确优先，包含次之 |
+| reference | 参考答案，用于评分对比 | reference, ref, gold, 参考答案, 标准答案 | 精确优先，包含次之 |
+| keypoint | 评测关键点，用于细粒度评分 | keypoint, keypoints, 关键点, 评测点 | 精确优先，包含次之 |
+
+> 包含匹配优先更长关键词（如 `model_name` 优先于 `model`）。
+
+**必填字段**：question、answer、model、case_id。
+
+### 映射格式
+
+```json
+{
+  "question": {"source_field": "问题", "default": null},
+  "answer": {"source_field": "回答", "default": null},
+  "model": {"source_field": "模型名称", "default": null},
+  "case_id": {"source_field": "id", "default": null}
+}
+```
+
+**生成规则**：匹配到 → `source_field=源字段名`；未匹配到 → `source_field=null, default=待确认`。
+
+> `case_id` 的 `default` 不使用，有 `source_field` 用源数据值，无则自动生成。
 
 ---
 
@@ -114,9 +194,11 @@ description: Use when user has an evaluation dataset file and needs to parse, an
 
 ---
 
-## 分支B：字段校验
+## 分支B：字段校验与确认
 
 **触发条件**：步骤4判断 answer 非空
+
+> **注意**：如果先前评测集全部由AI助手生成，则跳过映射确认步骤（步骤B3），因为评测集已按标准格式生成。
 
 ### 步骤B1：检查 model 字段状态
 
@@ -124,7 +206,7 @@ description: Use when user has an evaluation dataset file and needs to parse, an
 
 | 状态 | 判断依据 | 后续动作 |
 |------|----------|----------|
-| 不存在或全空 | `model` 字段不存在或所有值为空 | → 步骤B3 |
+| 不存在或全空 | `model` 字段不存在或所有值为空 | → 步骤B4 |
 | 已填充 | `model` 字段存在且有非空值 | → 步骤B2 |
 
 ### 步骤B2：检查 case_id 字段状态
@@ -134,9 +216,31 @@ description: Use when user has an evaluation dataset file and needs to parse, an
 | 已填充 | 无需调整，标准化时使用原值 |
 | 不存在或全空 | 标准化时按 question 分组自动生成 |
 
-### 步骤B3：调整映射配置
+> 多模型横评时，同一问题的不同模型回答共享相同 case_id。
 
-**model 字段为空时**：
+### 步骤B3：确认映射配置
+
+**判断**：用户是否已确认映射？
+
+| 状态 | 动作 |
+|------|------|
+| 已确认 | → 保存并返回 |
+| 未确认 | 执行确认流程 |
+
+**映射目的说明**：将评测集的原始字段映射为标准字段，标准化后便于后续统一处理（标准化转换、评测执行、评分判定等环节均基于标准字段工作）。
+
+展示映射表（含标准字段含义），等待用户确认。
+
+> **此步骤必须等待用户确认，不可跳过。**
+
+| 用户选择 | 后续动作 |
+|----------|----------|
+| Y | → 步骤B4 |
+| n | 调整映射，重新确认 |
+
+### 步骤B4：处理 model 字段为空情况
+
+**条件**：步骤B1判断 model 字段为空时执行。
 
 询问用户评测模式：
 
@@ -146,8 +250,14 @@ description: Use when user has an evaluation dataset file and needs to parse, an
 2. 多模型横评 - 多个模型横向对比（需在评测集补充 model 字段）
 ```
 
-- 选择1：设置 `model.default` 为用户指定的模型名称
-- 选择2：提示用户在评测集补充 model 字段，重新执行步骤1
+| 选择 | 处理方式 |
+|------|----------|
+| 1 | 设置 `model.default` 为用户指定的模型名称 |
+| 2 | 提示用户在评测集补充 model 字段，重新执行步骤1 |
+
+### 步骤B5：保存
+
+保存至 `{work-dir}/.eval/{session-id}/evalset/evalset-fields-mapping.json`。
 
 ---
 
@@ -164,6 +274,7 @@ description: Use when user has an evaluation dataset file and needs to parse, an
 | 文件格式不支持 | 文件不是 JSONL/JSON/CSV/Excel 格式 | 转换为支持的格式后重试 |
 | 缺少 question 字段 | 文件不包含问题字段 | 确保文件包含 `question` 字段 |
 | 字段映射不明确 | 原始字段名与标准字段差异大 | 展示示例数据并请求确认 |
+| 结构解析报错 | 编码问题 | 检查编码，转为UTF-8 |
 | 模型列表获取失败 | Token 失效或网络问题 | 引导重新授权或检查网络 |
 | 部分 answer 为空 | 数据不一致 | 询问用户选择处理方式 |
 | model 字段为空但选择多模型横评 | 缺少必要数据 | 提示用户补充 model 字段 |
@@ -177,5 +288,6 @@ description: Use when user has an evaluation dataset file and needs to parse, an
 | `{work-dir}` | 当前工作目录 |
 | `{session-id}` | 会话目录名，格式 `session-{8位字母数字}` |
 | `{skill-dir}` | 技能安装目录 |
+| `{ext}` | 文件扩展名 |
 | `{python-env}` | Python环境变量前缀 |
 | `{python-cmd}` | Python命令（`python` 或 `python3`） |
