@@ -37,8 +37,8 @@ description: Use when initialization completed and need to configure evaluation 
 
 | 编号 | 流程名称 | 文档位置 | 调用时机 |
 |------|----------|----------|----------|
-| 流程5 | 定制用例级评测配置 | [dimension-process.md](./processes/dimension-process.md#流程5定制用例级评测配置) | 任务2步骤3 |
-| 流程6 | 通用维度级评测配置 | [dimension-process.md](./processes/dimension-process.md#流程6通用维度级评测配置) | 任务2步骤3 |
+| 流程5 | 定制用例级评测配置 | [dimension-case-level.md](./processes/dimension-case-level.md) | 任务2步骤3 |
+| 流程6 | 通用维度级评测配置 | [dimension-general.md](./processes/dimension-general.md) | 任务2步骤3 |
 
 ---
 
