@@ -1,5 +1,5 @@
 ---
-name: evalset-create-process
+name: evalset-create
 description: Use when user has no evaluation dataset and needs AI to generate one from scratch
 ---
 

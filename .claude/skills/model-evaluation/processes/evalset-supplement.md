@@ -1,5 +1,5 @@
 ---
-name: evalset-supplement-process
+name: evalset-supplement
 description: Use when user has a question-only evaluation dataset and needs AI to generate answers
 ---
 

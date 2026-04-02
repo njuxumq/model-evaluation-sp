@@ -144,7 +144,7 @@ python script.py
 {skill-dir}/.claude/skills/model-evaluation/
 ├── SKILL.md, eval-init.md, eval-build.md, eval-execute.md
 ├── assets/          # 资源文件：eval-judge.json, experts/, dimensions/
-├── processes/       # 独立流程：evalset-parse-process.md, dimension-process.md, keypoint-process.md
+├── processes/       # 独立流程：evalset-parse.md, dimension-process.md, keypoint-process.md
 ├── references/      # 参考文档：服务接口、中间产物、脚本定义、模板说明
 └── scripts/         # 可执行脚本：eval_auth.py, eval_set.py, eval_task.py, eval_dimension.py
 ```

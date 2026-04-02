@@ -38,7 +38,7 @@ description: Use when initialization completed and need to configure evaluation 
 
 | 编号 | 流程名称 | 文档位置 | 调用时机 |
 |------|----------|----------|----------|
-| 流程3 | 评测集解析 | [evalset-parse-process.md](./processes/evalset-parse-process.md) | 任务4步骤2 |
+| 流程3 | 评测集解析 | [evalset-parse.md](./processes/evalset-parse.md) | 任务4步骤2 |
 | 流程4 | 评测点生成 | [keypoint-process.md](./processes/keypoint-process.md) | 任务4步骤4 |
 | 流程5 | 定制用例级评测配置 | [dimension-process.md](./processes/dimension-process.md#流程5定制用例级评测配置) | 任务2步骤3 |
 | 流程6 | 通用维度级评测配置 | [dimension-process.md](./processes/dimension-process.md#流程6通用维度级评测配置) | 任务2步骤3 |
