@@ -239,7 +239,7 @@ cp {skill-dir}/assets/eval-judge.json {work-dir}/.eval/{session-id}/eval-judge.j
 {python-env}{python-cmd} {skill-dir}/scripts/eval_set.py expand \
   --input {work-dir}/.eval/{session-id}/evalset/evalset-prepared.{ext} \
   --mapping {work-dir}/.eval/{session-id}/evalset/evalset-fields-mapping.json \
-  --models {work-dir}/.eval/{session-id}/evalset/selected-models.json \
+  --models {work-dir}/.eval/{session-id}/selected-models.json \
   --output {work-dir}/.eval/{session-id}/evalset/evalset-standard.jsonl
 ```
 

@@ -123,10 +123,26 @@ class ApiClient(BaseHttpClient):
         return result.get('data', {})
 
     def get_models(self) -> list:
-        """获取可用推理模型列表
+        """获取可用推理模型名称列表
 
         Returns:
             模型名称列表，如 ["deepseek-r1", "gpt-4", "claude-3"]
         """
         response = self.get("/open/api/v1/models")
         return response.get("models", [])
+
+    def get_models_detail(self) -> list:
+        """获取可用推理模型详情列表
+
+        调用 /models 接口，返回完整的模型信息。
+
+        Returns:
+            模型信息列表，每项包含:
+            - name: 模型名称
+            - description: 模型描述
+            - model: 模型服务标识
+            - id: 模型ID（用于填充 metainfo.infer_model_id）
+        """
+        response = self.get("/models")
+        # response 直接是数组
+        return response if isinstance(response, list) else []

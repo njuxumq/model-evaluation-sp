@@ -159,10 +159,10 @@ def expand_data(data: list, mapping: dict, models: list) -> list:
     Args:
         data: 原始评测集数据
         mapping: 字段映射配置
-        models: 用户选择的模型列表
+        models: 用户选择的模型列表，每项为 {"name", "model", "id", ...}
 
     Returns:
-        展开后的标准化评测集
+        展开后的标准化评测集（不含 metainfo，由 submit 阶段填充）
     """
     result = []
     case_counter = 0
@@ -180,11 +180,13 @@ def expand_data(data: list, mapping: dict, models: list) -> list:
         case_id = question_to_case[question]
 
         # 为每个模型生成一条记录
-        for model in models:
+        for model_info in models:
+            # 从模型信息中提取 model 字段（模型服务标识）
+            model_name = model_info.get("model", "default")
             record = {
                 "question": question,
                 "answer": "",  # 空字符串，由推理服务填充
-                "model": model,
+                "model": model_name,
                 "case_id": case_id
             }
             # 添加可选字段
@@ -328,7 +330,17 @@ def cmd_normalize(args):
 
 
 def cmd_expand(args):
-    """展开评测集（answer 为空场景）"""
+    """展开评测集（answer 为空场景）
+
+    模型列表格式：
+    {
+        "models": [
+            {"name": "...", "model": "...", "id": "..."},
+            ...
+        ],
+        "mode": "single" | "multi"
+    }
+    """
     # 加载原始数据
     load_result = load_data(args.input)
     if not load_result.get("success"):
@@ -343,7 +355,7 @@ def cmd_expand(args):
         raise ValueError(f"映射文件加载失败: {mapping_result.get('message')}")
     mapping = mapping_result.get("data", {})
 
-    # 加载用户选择的模型列表
+    # 加载用户选择的模型列表（新格式）
     models_result = load_json(args.models)
     if not models_result.get("success"):
         raise ValueError(f"模型列表文件加载失败: {models_result.get('message')}")
@@ -364,11 +376,13 @@ def cmd_expand(args):
         encoding='utf-8'
     )
 
+    # 返回模型服务标识列表（用于显示）
+    model_names = [m.get("model", "default") for m in models]
     return {
         "success": True,
         "input_rows": len(data),
         "output_rows": len(expanded),
-        "models": models,
+        "models": model_names,
         "output_file": args.output
     }
 
@@ -384,7 +398,25 @@ def generate_evalset_id() -> str:
 
 
 def cmd_submit(args):
-    """提交评测集到后端服务"""
+    """提交评测集到后端服务
+
+    metainfo 填充规则：
+    - 如果提供了 --models 参数，根据 model 字段查找对应的 id
+    - 填充 metainfo.infer_model_id 字段
+    """
+    # 加载模型列表（构建 model -> id 映射）
+    model_id_map = {}
+    if args.models:
+        models_result = load_json(args.models)
+        if models_result.get("success"):
+            models_data = models_result.get("data", {})
+            models_list = models_data.get("models", [])
+            for m in models_list:
+                model_key = m.get("model", "")
+                model_id = m.get("id", "")
+                if model_key and model_id:
+                    model_id_map[model_key] = model_id
+
     # 解析评测集
     items = []
     for idx, line in enumerate(Path(args.evalset).read_text(encoding='utf-8').splitlines()):
@@ -407,6 +439,10 @@ def cmd_submit(args):
             for field in OPTIONAL_FIELDS:
                 if field in case and case[field]:
                     item[field] = case[field]
+            # 填充 metainfo.infer_model_id
+            model_value = item.get('model', '')
+            if model_value in model_id_map:
+                item['metainfo'] = {"infer_model_id": model_id_map[model_value]}
             items.append(item)
         except (json.JSONDecodeError, KeyError) as e:
             raise ValueError(f"评测集第{idx+1}行解析失败: {e}")
@@ -430,23 +466,6 @@ def cmd_submit(args):
 
     save_json(args.output, {"dataset": evalset_id, "total": len(items)})
     return {"evalset_id": evalset_id, "total": len(items)}
-
-
-def cmd_list_models(args):
-    """获取可用推理模型列表"""
-    config_result = load_config_kv(args.config)
-    if not config_result.get("success"):
-        raise ValueError(f"配置文件加载失败: {config_result.get('message')}")
-    config = config_result.get("data", {})
-
-    # 使用 TokenManager 和 ApiClient
-    token_manager = TokenManager(args.auth)
-    client = ApiClient(token_manager, config.get('base_url', 'http://127.0.0.1:8080'))
-
-    models = client.get_models()
-
-    save_json(args.output, {"models": models})
-    return {"models": models, "output": args.output}
 
 
 def analyze_field_with_mapping(data: list, mapping: dict, field_name: str) -> dict:
@@ -526,7 +545,7 @@ def cmd_check_status(args):
 BATCH_SIZE = 500
 
 
-def cmd_submit_batch(file_path: str, api_client, endpoint: str) -> dict:
+def cmd_submit_batch(file_path: str, api_client, endpoint: str, models_path: str = None) -> dict:
     """
     分批提交评测集数据（流式处理）
 
@@ -534,6 +553,7 @@ def cmd_submit_batch(file_path: str, api_client, endpoint: str) -> dict:
         file_path: JSONL 文件路径
         api_client: API 客户端实例
         endpoint: API 端点
+        models_path: 模型列表文件路径（selected-models.json）
 
     Returns:
         包含 success, stats, errors 字段的结果字典
@@ -548,6 +568,19 @@ def cmd_submit_batch(file_path: str, api_client, endpoint: str) -> dict:
         - D-42: 每批次完成后输出一次进度
         - D-43: 进度采用 JSON 格式
     """
+    # 加载模型列表，构建 model -> id 映射
+    model_id_map = {}
+    if models_path:
+        models_result = load_json(models_path)
+        if models_result.get("success"):
+            models_data = models_result.get("data", {})
+            models_list = models_data.get("models", [])
+            for m in models_list:
+                model_key = m.get("model", "")
+                model_id = m.get("id", "")
+                if model_key and model_id:
+                    model_id_map[model_key] = model_id
+
     # 1. 流式读取文件
     stream = load_jsonl_stream(file_path)
 
@@ -586,6 +619,10 @@ def cmd_submit_batch(file_path: str, api_client, endpoint: str) -> dict:
         for field in OPTIONAL_FIELDS:
             if field in data and data[field]:
                 record[field] = data[field]
+        # 填充 metainfo.infer_model_id
+        model_value = record.get('model', '')
+        if model_value in model_id_map:
+            record['metainfo'] = {"infer_model_id": model_id_map[model_value]}
 
         batch.append(record)
         stats["total"] += 1
@@ -671,15 +708,9 @@ def main():
     p.add_argument('--evalset', required=True, help='标准化评测集文件路径')
     p.add_argument('--config', required=True, help='服务配置文件')
     p.add_argument('--auth', required=True, help='鉴权信息文件')
+    p.add_argument('--models', required=False, help='模型列表文件路径（用于填充 metainfo）')
     p.add_argument('--output', required=True, help='输出文件路径')
     p.set_defaults(func=cmd_submit)
-
-    # list-models
-    p = subparsers.add_parser('list-models', help='获取可用推理模型列表')
-    p.add_argument('--auth', required=True, help='鉴权信息文件')
-    p.add_argument('--config', required=True, help='服务配置文件')
-    p.add_argument('--output', required=True, help='输出文件路径')
-    p.set_defaults(func=cmd_list_models)
 
     # expand
     p = subparsers.add_parser('expand', help='展开评测集（answer为空场景）')
@@ -700,7 +731,7 @@ def main():
 
     # Python 3.6 兼容：手动检查子命令
     if args.command is None:
-        parser.error("请指定子命令: analysis, normalize, expand, submit, list-models")
+        parser.error("请指定子命令: analysis, normalize, expand, submit, check-status")
 
     try:
         result_obj = args.func(args)
