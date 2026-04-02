@@ -134,7 +134,7 @@ class ApiClient(BaseHttpClient):
     def get_models_detail(self) -> list:
         """获取可用推理模型详情列表
 
-        调用 /models 接口，返回完整的模型信息。
+        调用 /open/api/v1/models 接口，返回完整的模型信息。
 
         Returns:
             模型信息列表，每项包含:
@@ -143,6 +143,11 @@ class ApiClient(BaseHttpClient):
             - model: 模型服务标识
             - id: 模型ID（用于填充 metainfo.infer_model_id）
         """
-        response = self.get("/models")
-        # response 直接是数组
-        return response if isinstance(response, list) else []
+        response = self.get("/open/api/v1/models")
+        # response 是 data 数组
+        models = response if isinstance(response, list) else []
+        # 确保 id 字段为字符串类型
+        for m in models:
+            if "id" in m and not isinstance(m["id"], str):
+                m["id"] = str(m["id"])
+        return models
