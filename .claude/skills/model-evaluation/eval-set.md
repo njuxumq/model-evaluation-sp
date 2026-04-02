@@ -152,6 +152,8 @@ description: Use when initialization and evaluation standards are configured, ne
 - 存在 → 定制用例级
 - 不存在 → 通用维度级
 
+**多模型横评场景**：若评测集包含多个模型对同一问题的回答（通过 `case_id` 关联），评测点按唯一 `case_id` 生成，避免重复。详见 [keypoint-process.md](./processes/keypoint-process.md#前置判断多模型横评场景)。
+
 ---
 
 #### 步骤5：上传评测集

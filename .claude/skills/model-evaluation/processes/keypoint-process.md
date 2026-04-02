@@ -11,6 +11,14 @@ description: Use when case-level evaluation requires generating keypoints for ev
 
 ---
 
+## 前置判断：多模型横评场景
+
+若 `case_id` 存在重复值（多模型横评），按唯一 `case_id` 去重后生成评测点，保存时复制到同 `case_id` 的所有记录。
+
+**示例**：20 条评测集（10 问题 × 2 模型）→ 生成 10 个评测点
+
+---
+
 ## 步骤1：场景判断
 
 根据标准化评测集字段组合识别场景类型。
@@ -128,6 +136,10 @@ user_prompt = build_user_prompt(question, reference, context)
 
 **字段格式**：字符串数组转为 JSON 字符串存储。
 - 示例：`["是否...", "是否..."]` 存储为 `"[\"是否...\", \"是否...\"]"`
+
+**多模型横评场景**：
+- 同一 `case_id` 的多条记录共享同一评测点
+- 保存时需将评测点复制到同 `case_id` 的所有记录
 
 **注意**：覆盖原文件，不创建新文件。
 
