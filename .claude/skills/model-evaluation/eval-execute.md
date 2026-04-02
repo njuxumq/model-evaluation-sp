@@ -47,7 +47,30 @@ description: Use when build phase completed and ready to submit or check evaluat
 2. **校验配置**：检查维度配置完整性（必填字段、权重总和等）
 3. **提交任务**：将任务提交至远程评测服务
 
+**判断**：`{work-dir}/.eval/{session-id}/selected-models.json` 是否存在？
+
+| 状态 | 动作 |
+|------|------|
+| 存在 | 评测集无答案场景，添加 `--inference_models` 参数 |
+| 不存在 | 评测集有答案场景，使用原命令 |
+
+---
+
 **提交命令**：
+
+**有推理配置**（评测集无答案场景）：
+```bash
+{python-env}{python-cmd} "{skill-dir}/scripts/eval_task.py" submit \
+  --config "{skill-dir}/scripts/cfg/eval-server.cfg" \
+  --auth "{work-dir}/.eval/auth.json" \
+  --eval_set "{work-dir}/.eval/{session-id}/evalset/evalset-meta.json" \
+  --eval_dimension "{work-dir}/.eval/{session-id}/eval-dimension.json" \
+  --eval_judge "{work-dir}/.eval/{session-id}/eval-judge.json" \
+  --inference_models "{work-dir}/.eval/{session-id}/selected-models.json" \
+  --output "{work-dir}/.eval/{session-id}/evaltask/evaltask-meta.json"
+```
+
+**无推理配置**（评测集有答案场景）：
 ```bash
 {python-env}{python-cmd} "{skill-dir}/scripts/eval_task.py" submit \
   --config "{skill-dir}/scripts/cfg/eval-server.cfg" \
