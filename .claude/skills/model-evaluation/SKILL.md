@@ -149,7 +149,9 @@ python script.py
 └── scripts/         # 可执行脚本：eval_auth.py, eval_set.py, eval_task.py, eval_dimension.py
 ```
 
-> ⚠️ `assets/` 目录存放**内置模板**，**只读不可写**。自定义模板应放在工作目录 `{work-dir}/.eval/{session-id}/`。
+> ⚠️ **只读目录**：`assets/` 和 `scripts/` 目录下的所有文件**只读不可修改**。
+> - `assets/`：内置模板资源，自定义模板应放在工作目录 `{work-dir}/.eval/{session-id}/`
+> - `scripts/`：可执行脚本，参数配置通过命令行参数传递，不应修改脚本内容
 
 ### 工作目录
 
