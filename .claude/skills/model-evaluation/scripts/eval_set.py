@@ -181,14 +181,18 @@ def expand_data(data: list, mapping: dict, models: list) -> list:
 
         # 为每个模型生成一条记录
         for model_info in models:
-            # 从模型信息中提取 model 字段（模型服务标识）
+            # 从模型信息中提取 model 字段（模型服务标识）和 id（模型ID）
             model_name = model_info.get("model", "default")
+            model_id = model_info.get("id", "")
             record = {
                 "question": question,
                 "answer": "",  # 空字符串，由推理服务填充
                 "model": model_name,
                 "case_id": case_id
             }
+            # 填充 metainfo.infer_model_id
+            if model_id:
+                record["metainfo"] = {"infer_model_id": model_id}
             # 添加可选字段
             for field in OPTIONAL_FIELDS:
                 value = extract_field_value(item, mapping, field)
@@ -435,13 +439,13 @@ def cmd_submit(args):
             for field in ['case_id', 'model', 'question']:
                 if is_empty_value(item.get(field)):
                     raise ValueError(f"评测集第{idx+1}行 {field} 字段为空")
-            # 可选字段
+            # 可选字段（包含 metainfo，expand 阶段已填充）
             for field in OPTIONAL_FIELDS:
                 if field in case and case[field]:
                     item[field] = case[field]
-            # 填充 metainfo.infer_model_id
+            # 兜底：若无 metainfo 且 model 有对应 id，则填充
             model_value = item.get('model', '')
-            if model_value in model_id_map:
+            if 'metainfo' not in item and model_value in model_id_map:
                 item['metainfo'] = {"infer_model_id": model_id_map[model_value]}
             items.append(item)
         except (json.JSONDecodeError, KeyError) as e:
@@ -615,13 +619,13 @@ def cmd_submit_batch(file_path: str, api_client, endpoint: str, models_path: str
         for field in ['case_id', 'model', 'question']:
             if is_empty_value(record.get(field)):
                 raise ValueError(f"评测集第{item['line']}行 {field} 字段为空")
-        # 添加可选字段
+        # 可选字段（包含 metainfo，expand 阶段已填充）
         for field in OPTIONAL_FIELDS:
             if field in data and data[field]:
                 record[field] = data[field]
-        # 填充 metainfo.infer_model_id
+        # 兜底：若无 metainfo 且 model 有对应 id，则填充
         model_value = record.get('model', '')
-        if model_value in model_id_map:
+        if 'metainfo' not in record and model_value in model_id_map:
             record['metainfo'] = {"infer_model_id": model_id_map[model_value]}
 
         batch.append(record)

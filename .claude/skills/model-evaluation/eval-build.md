@@ -180,6 +180,7 @@ cp {skill-dir}/assets/eval-judge.json {work-dir}/.eval/{session-id}/eval-judge.j
 | 跳过维度确认 | 维度权重影响评测结果，必须经用户确认 |
 | 权重设置不正确 | 所有维度权重总和必须为1.0 |
 | 用例级评测调整权重或维度 | 单维度结构固定 |
+| 配置评委时查询可用模型列表 | 配置评委只需复制默认配置，禁止查询模型列表 |
 
 > 通用违规行为见 [SKILL.md Red Flags](./SKILL.md#red-flags---停止并检查)
 

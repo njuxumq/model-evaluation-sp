@@ -35,7 +35,7 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 
 ## 步骤1：确认生成依据
 
-**判断**：从 `eval-dimension.json` 中提取评测场景和评测维度。
+**判断**：历史对话或从 `eval-dimension.json` 中提取评测场景和评测维度。
 
 | 状态 | 判断 | 动作 |
 |------|------|------|

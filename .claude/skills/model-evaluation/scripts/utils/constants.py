@@ -98,4 +98,4 @@ FIELD_PATTERNS = {
 CASE_ID_EXACT_MATCH = ['id']
 
 REQUIRED_FIELDS = ['question', 'answer', 'model', 'case_id']
-OPTIONAL_FIELDS = ['system', 'context', 'category', 'reference', 'keypoint']
+OPTIONAL_FIELDS = ['system', 'context', 'category', 'reference', 'keypoint', 'metainfo']
