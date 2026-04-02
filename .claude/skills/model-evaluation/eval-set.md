@@ -42,9 +42,9 @@ description: Use when initialization and evaluation standards are configured, ne
 
 ## 任务列表
 
-### 任务1：确认评测集
+### 任务1：处理评测集
 
-**目标**：识别评测集来源 → 执行前置流程 → 解析转换 → 上传。
+**目标**：识别来源 → 解析 → 标准化 → 上传。
 
 **输出**：`{work-dir}/.eval/{session-id}/evalset/evalset-meta.json`
 
