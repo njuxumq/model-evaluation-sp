@@ -11,11 +11,11 @@ description: Use when build phase completed and ready to submit or check evaluat
 
 核心原则：**轮询优先，状态驱动，错误可追溯**。
 
-**前置验证**：`eval-dimension.json`、`evalset-meta.json`、`eval-judge.json` 存在。缺失则返回构建阶段（加载 `eval-build.md`）。
+**前置验证**：`auth.json` 存在、`eval-dimension.json` 存在、`eval-judge.json` 存在、`evalset-meta.json` 存在。缺失则返回对应前置阶段。
 
 ## 何时使用
 
-- 构建阶段已完成（维度、评测集、评委配置就绪）
+- 评测集处理阶段已完成（维度、评测集、评委配置就绪）
 - 需要提交、查询或展示评测任务时
 
 ---
