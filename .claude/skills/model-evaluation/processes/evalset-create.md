@@ -23,14 +23,6 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 
 ---
 
-## 流程步骤概览
-
-```
-步骤1：确认生成依据
-步骤2：收集配置并生成（询问 → 确认 → 生成）
-步骤3：预览与保存
-```
-
 ---
 
 ## 步骤1：确认生成依据
@@ -66,17 +58,9 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 | **难度分布** | 难度偏好？ | 均衡分布 | 否 |
 | **其他选项** | 是否需要更多配置？ | 无 | 否 |
 
-**类型分布选项**：
-- 均衡分布（默认）
-- 偏重开放式
-- 偏重封闭式
-- 偏重场景化
+**类型分布选项**：均衡分布（默认）、偏重开放式、偏重封闭式、偏重场景化
 
-**难度分布选项**：
-- 均衡分布（默认）
-- 偏重简单
-- 偏重中等
-- 偏重困难
+**难度分布选项**：均衡分布（默认）、偏重简单、偏重中等、偏重困难
 
 **其他选项展开**：
 
@@ -90,17 +74,9 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 
 ### 配置确认
 
-收集配置后，展示配置摘要供用户确认：
+收集配置后，展示配置摘要（数量、类型分布、难度分布、分类标签、示例问题、特殊约束），询问：
 
 ```
-生成配置：
-- 数量：{数量}条
-- 类型分布：{类型分布}
-- 难度分布：{难度分布}
-- 分类标签：{分类标签}
-- 示例问题：{示例或"无"}
-- 特殊约束：{约束或"无"}
-
 是否按此配置生成？(Y/n/调整)
 ```
 
@@ -139,24 +115,17 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 
 ### 预览内容
 
-展示前 3-5 条问题和 category 分布统计：
+展示前 3 条问题和 category 分布统计：
 
 ```
 生成完成，共 {数量} 条问题：
 
-【预览前5条】
+【预览前3条】
 1. [知识问答] 请解释什么是机器学习？
 2. [推荐建议] 为我推荐一个适合周末短途旅行的目的地。
 3. [行程规划] 如何规划一个三口之家的日本七日游？
-4. [创意生成] 请写一首关于春天的短诗。
-5. [知识问答] Python 中如何实现多线程？
 
-【分布统计】
-- 知识问答：3条
-- 推荐建议：2条
-- 行程规划：2条
-- 创意生成：2条
-- 其他：1条
+【分布统计】知识问答：3条、推荐建议：2条、行程规划：2条、创意生成：2条、其他：1条
 
 是否确认保存？(Y/n/重新生成)
 ```
@@ -197,8 +166,6 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 {"case_id": "case-001", "question": "请解释什么是机器学习？", "category": "知识问答"}
 {"case_id": "case-002", "question": "为我推荐一个适合周末短途旅行的目的地。", "category": "推荐建议"}
 {"case_id": "case-003", "question": "如何规划一个三口之家的日本七日游？", "category": "行程规划"}
-{"case_id": "case-004", "question": "请写一首关于春天的短诗。", "category": "创意生成"}
-{"case_id": "case-005", "question": "Python 中如何实现多线程？", "category": "知识问答"}
 ```
 
 ---

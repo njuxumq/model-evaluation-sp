@@ -129,11 +129,15 @@ description: Use when build phase completed and ready to submit or check evaluat
 
 **步骤3**：处理结果
 
-后台任务完成后，主代理收到通知，根据状态执行动作：
+后台任务完成后，主代理收到通知，执行以下操作：
+
+1. **读取后台任务输出文件**（`{task-output-file}`）
+2. **提取关键信息**：从输出最后一行 JSON 中提取 `platform_url`（在线报告链接）
+3. **根据状态执行动作**：
 
 | 状态 | 动作 |
 |------|------|
-| Succeeded | 进入任务3 |
+| Succeeded | 输出变量`{platform_url}`，进入任务3 |
 | Failed | 展示错误信息 |
 | Cancelled | 询问用户后续操作 |
 
@@ -169,10 +173,11 @@ description: Use when build phase completed and ready to submit or check evaluat
 **目标**：将评测结果摘要展示给用户，并提供在线查看链接。
 
 **结果展示命令**：
+
 ```bash
 {python-env}{python-cmd} "{skill-dir}/scripts/eval_task.py" summary \
   --result "{work-dir}/.eval/{session-id}/evaltask/evaltask-result.json" \
-  --platform_url "{在线报告链接}"
+  --platform_url "{platform_url}"
 ```
 
 **输出内容**：
@@ -185,8 +190,8 @@ description: Use when build phase completed and ready to submit or check evaluat
 
 **注意事项**：
 - 使用 `summary` 子命令可避免读取大文件，节省 Token
-- 在线链接应在任务状态查询成功后从返回结果中获取
-- 若在线链接获取失败，仍需展示本地JSON结果路径
+- **必须传入 `--platform_url` 参数**，确保在线报告链接被展示
+- 若 `{platform_url}` 为空，需检查任务2的输出是否正确
 
 ---
 
@@ -196,7 +201,15 @@ description: Use when build phase completed and ready to submit or check evaluat
 |----------|----------|
 | 跳过前置验证 | 任务提交前必须检查eval-dimension.json、evalset-meta.json、eval-judge.json是否存在 |
 | 未等待任务完成就展示结果 | 必须等待任务状态变为Succeeded或Failed后才能展示结果 |
-| 未展示在线报告链接 | 任务成功后必须展示在线报告链接，便于用户查看完整报告 |
+| 未展示在线报告链接 | 任务成功后**必须**展示在线报告链接，便于用户查看完整报告 |
+
+**常见借口与纠正**：
+
+| 借口 | 现实 |
+|------|------|
+| "summary 命令会自动输出链接" | `--platform_url` 参数是必需的，不传入则不会输出 |
+| "链接在结果文件中" | `platform_url` 只存在于轮询输出中，不在结果文件中 |
+| "用户可以自己去平台查看" | 必须提供直接链接，提升用户体验 |
 
 > 通用违规行为见 [SKILL.md Red Flags](./SKILL.md#red-flags---停止并检查)
 
