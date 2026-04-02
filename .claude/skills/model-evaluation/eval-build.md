@@ -7,7 +7,7 @@ description: Use when initialization completed and need to configure evaluation 
 
 ## 目标
 
-完成评测场景确认、维度配置、评委配置、评测集处理后，进入执行阶段。
+完成评测场景确认、维度配置、评委配置后，进入评测集处理阶段。
 
 核心原则：**按序执行，用户确认优先，配置校验后置**。
 
@@ -28,9 +28,8 @@ description: Use when initialization completed and need to configure evaluation 
 |----------|--------------|
 | `eval-dimension.json` 存在 | 任务1、任务2 |
 | `eval-judge.json` 存在 | 任务3 |
-| `evalset-meta.json` 存在 | 任务4 |
 
-全部通过后，进入执行阶段。
+全部通过后，进入评测集处理阶段。
 
 ---
 
@@ -38,8 +37,6 @@ description: Use when initialization completed and need to configure evaluation 
 
 | 编号 | 流程名称 | 文档位置 | 调用时机 |
 |------|----------|----------|----------|
-| 流程3 | 评测集解析 | [evalset-parse.md](./processes/evalset-parse.md) | 任务4步骤2 |
-| 流程4 | 评测点生成 | [keypoint-process.md](./processes/keypoint-process.md) | 任务4步骤4 |
 | 流程5 | 定制用例级评测配置 | [dimension-process.md](./processes/dimension-process.md#流程5定制用例级评测配置) | 任务2步骤3 |
 | 流程6 | 通用维度级评测配置 | [dimension-process.md](./processes/dimension-process.md#流程6通用维度级评测配置) | 任务2步骤3 |
 
@@ -175,123 +172,14 @@ cp {skill-dir}/assets/eval-judge.json {work-dir}/.eval/{session-id}/eval-judge.j
 
 ---
 
-### 任务4：确认评测集
-
-**目标**：识别评测集来源 → 执行前置流程 → 解析转换 → 上传。
-
-**输出**：`{work-dir}/.eval/{session-id}/evalset/evalset-meta.json`
-
----
-
-#### 步骤1：识别评测集来源
-
-**判断**：分析历史对话，查找评测集相关信息。
-
-| 识别结果 | 判断依据 | 后续动作 |
-|----------|----------|----------|
-| 已有评测集 | 文件路径或文件描述 | → 步骤2 |
-| 无法判断 | 无相关信息 | → 询问用户 |
-
-**询问用户**（无法判断时）：
-
-评测集是评测任务的必需数据源，请提供包含问题和答案的评测集文件。
-
-**支持的格式**：CSV、JSON、JSONL、XLSX
-
-**评测集内容示例**：
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `question` | `string` | 是 | 评测问题 |
-| `answer` | `string` | 是 | 模型回答 |
-| `model` | `string` | 是 | 模型标识（默认 `default`） |
-| `case_id` | `string` | 否 | 问题标识，用于关联同一问题的多模型回答 |
-| `reference` | `string` | 否 | 参考答案 |
-
-**JSONL 格式示例**：
-
-```jsonl
-{"question": "什么是大语言模型？", "answer": "大语言模型（LLM）是一种基于深度学习的自然语言处理模型...", "model": "gpt-4"}
-{"question": "如何提高代码质量？", "answer": "提高代码质量可以从以下几个方面入手：1. 遵循编码规范...", "model": "gpt-4"}
-```
-
-> **注意**：若用户未提供评测集，需等待用户提供后方可继续。
-
----
-
-#### 步骤2：执行解析流程
-
-执行流程3，完成后进入步骤3。
-
----
-
-#### 步骤3：标准化转换
-
-**判断**：检查解析流程输出文件。
-
-| 输出文件 | 评测集类型 | 标准化命令 |
-|----------|------------|------------|
-| `selected-models.json` 存在 | 只有问题 | `expand` 子命令 |
-| 仅 `evalset-fields-mapping.json` 存在 | 问题+答案 | `normalize` 子命令 |
-
-**只有问题场景**：
-
-```bash
-{python-env}{python-cmd} {skill-dir}/scripts/eval_set.py expand \
-  --input {work-dir}/.eval/{session-id}/evalset/evalset-prepared.{ext} \
-  --mapping {work-dir}/.eval/{session-id}/evalset/evalset-fields-mapping.json \
-  --models {work-dir}/.eval/{session-id}/selected-models.json \
-  --output {work-dir}/.eval/{session-id}/evalset/evalset-standard.jsonl
-```
-
-**问题+答案场景**：
-
-```bash
-{python-env}{python-cmd} {skill-dir}/scripts/eval_set.py normalize \
-  --input {work-dir}/.eval/{session-id}/evalset/evalset-prepared.{ext} \
-  --mapping {work-dir}/.eval/{session-id}/evalset/evalset-fields-mapping.json \
-  --output {work-dir}/.eval/{session-id}/evalset/evalset-standard.jsonl
-```
-
----
-
-#### 步骤4：评测点生成（按需）
-
-**判断**：是否需要评测点生成？
-
-| 评测方式 | keypoint 字段状态 | 动作 |
-|----------|-------------------|------|
-| 通用维度级 | - | 跳过 → 步骤5 |
-| 定制用例级 | 存在且全部非空 | 跳过 → 步骤5 |
-| 定制用例级 | 不存在或部分为空 | 执行流程4 → 步骤5 |
-
----
-
-#### 步骤5：上传评测集
-
-```bash
-{python-env}{python-cmd} {skill-dir}/scripts/eval_set.py submit \
-  --auth {work-dir}/.eval/auth.json \
-  --config {skill-dir}/scripts/cfg/eval-server.cfg \
-  --evalset {work-dir}/.eval/{session-id}/evalset/evalset-standard.jsonl \
-  --output {work-dir}/.eval/{session-id}/evalset/evalset-meta.json
-```
-
-**失败处理**：参考 [评测服务接口说明.md](./references/评测服务接口说明.md#错误码)。
-
----
-
 ## Red Flags
 
 | 违规行为 | 简洁理由 |
 |----------|----------|
 | 跳过场景确认 | 场景是专家模板匹配的必需依据 |
 | 跳过维度确认 | 维度权重影响评测结果，必须经用户确认 |
-| 跳过映射确认 | 字段映射必须经用户确认后才能标准化 |
 | 权重设置不正确 | 所有维度权重总和必须为1.0 |
-| 跳过格式验证 | 评测集格式检查可防止上传失败 |
 | 用例级评测调整权重或维度 | 单维度结构固定 |
-| 帮助用户生成评测集 | 评测集需用户真实数据，AI生成无法代表实际场景 |
 
 > 通用违规行为见 [SKILL.md Red Flags](./SKILL.md#red-flags---停止并检查)
 
@@ -305,8 +193,6 @@ cp {skill-dir}/assets/eval-judge.json {work-dir}/.eval/{session-id}/eval-judge.j
 | 专家模板匹配失败 | 场景不在预设模板库 | 进入自定义流程，参考内置维度 |
 | 维度配置错误 | 模板格式不符合规范 | 检查 evals 数组结构和 judge_id 字段 |
 | 用例级评测误调整 | 尝试增删维度或调整权重 | 仅允许修改维度配置字段 |
-| 评测集解析失败 | 文件格式损坏或不支持 | 检查格式，提供支持格式列表 |
-| 字段映射不明确 | 原始字段名与标准字段差异大 | 展示示例数据并请求确认 |
 
 > API 错误码见 [评测服务接口说明.md](./references/评测服务接口说明.md#错误码)
 
