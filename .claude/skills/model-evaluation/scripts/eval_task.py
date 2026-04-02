@@ -22,6 +22,51 @@ from clients import (
 from eval_dimension import update_config, check_config
 
 
+def load_inference_models(inference_models_path: str) -> list:
+    """加载推理模型列表，返回顶层 models 格式"""
+    if not inference_models_path:
+        return []
+
+    result = load_json(inference_models_path)
+    if not result.get("success"):
+        raise ValueError(f"推理模型文件加载失败: {result.get('message')}")
+
+    selected_models = result.get("data", {})
+    models = selected_models.get("models", [])
+
+    # 转换为顶层 models 格式
+    return [
+        {
+            "id": m.get("id"),
+            "name": m.get("name"),
+            "model": m.get("model")
+        }
+        for m in models
+    ]
+
+
+def build_inference_template(evalset_id: str, inference_models_path: str) -> dict:
+    """构建 inference 模板"""
+    if not inference_models_path:
+        return None
+
+    result = load_json(inference_models_path)
+    if not result.get("success"):
+        raise ValueError(f"推理模型文件加载失败: {result.get('message')}")
+
+    selected_models = result.get("data", {})
+    models = selected_models.get("models", [])
+
+    return {
+        "name": "模型推理",
+        "type": "inference",
+        "parameters": {
+            "evalset": evalset_id,
+            "models": [{"id": m.get("id")} for m in models]
+        }
+    }
+
+
 # ============================================================================
 # 提交任务
 # ============================================================================
@@ -70,16 +115,35 @@ def cmd_submit(args):
         raise ValueError(f"评委配置加载失败: {judges_result.get('message')}")
     judges = judges_result.get("data", {})
 
+    # 加载推理模型（新增）
+    inference_models_list = []
+    inference_template = None
+    if args.inference_models:
+        inference_models_list = load_inference_models(args.inference_models)
+        inference_template = build_inference_template(evalset_id, args.inference_models)
+
+    # 构建评委模型列表
+    judge_models = [judges] if judges else []
+
+    # 合并模型列表：推理模型 + 评委模型
+    all_models = inference_models_list + judge_models
+
+    # 构建 templates 数组
+    templates = []
+    if inference_template:
+        templates.append(inference_template)
+    templates.append({
+        "name": "模型评测",
+        "type": "evaluation",
+        "parameters": {"evalset": evalset_id, "eval": dimensions.get("evals")}
+    })
+
     payload = {
         "apiVersion": "v1",
-        "models": [judges] if judges else [],
+        "models": all_models,
         "agents": [],
         "spec": {
-            "templates": [{
-                "name": "模型评测",
-                "type": "evaluation",
-                "parameters": {"evalset": evalset_id, "eval": dimensions.get("evals")}
-            }]
+            "templates": templates
         }
     }
 
@@ -288,6 +352,7 @@ def main():
     p.add_argument('--eval_dimension', required=True, help='评测维度配置文件')
     p.add_argument('--eval_judge', required=True, help='评委配置文件')
     p.add_argument('--output', required=True, help='评测任务元信息输出文件')
+    p.add_argument('--inference_models', default=None, help='推理模型列表文件(selected-models.json，可选)')
     p.set_defaults(func=cmd_submit)
 
     # status
