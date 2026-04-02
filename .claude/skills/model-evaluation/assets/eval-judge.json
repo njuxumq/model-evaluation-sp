@@ -2,10 +2,5 @@
     "id": "2620110001600021",
     "name": "DeepSeek-R1",
     "type": "api-openai",
-    "model": "xdeepseekr1",
-    "concurrency": 10,
-    "params": {
-        "max_tokens": 16384,
-        "temperature": 0
-    }
+    "model": "xdeepseekr1"
 }

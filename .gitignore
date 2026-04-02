@@ -1,0 +1,9 @@
+# Evaluation session data
+.eval/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Dataset (user data)
+dataset/
