@@ -431,8 +431,8 @@ def cmd_submit(args):
                 "question": case['question'],
                 "answer": case['answer']
             }
-            # 必填字段非空检测
-            for field in ['case_id', 'model', 'question', 'answer']:
+            # 必填字段非空检测（answer 可为空，由推理服务填充）
+            for field in ['case_id', 'model', 'question']:
                 if is_empty_value(item.get(field)):
                     raise ValueError(f"评测集第{idx+1}行 {field} 字段为空")
             # 可选字段
@@ -611,8 +611,8 @@ def cmd_submit_batch(file_path: str, api_client, endpoint: str, models_path: str
             "question": data['question'],
             "answer": data['answer']
         }
-        # 必填字段非空检测
-        for field in ['case_id', 'model', 'question', 'answer']:
+        # 必填字段非空检测（answer 可为空，由推理服务填充）
+        for field in ['case_id', 'model', 'question']:
             if is_empty_value(record.get(field)):
                 raise ValueError(f"评测集第{item['line']}行 {field} 字段为空")
         # 添加可选字段
