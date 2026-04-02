@@ -1,27 +1,48 @@
 ---
-name: evalset-create
-description: Use when user has no evaluation dataset and needs AI to generate a question-only dataset from scratch based on evaluation scene and dimensions
+name: evalset-create-refactor
+date: 2026-04-02
+status: draft
 ---
 
-# 问题集生成流程
+# 问题集生成流程重构设计文档
 
-本文档定义生成问题集流程，AI 根据评测场景和评测维度从零生成仅包含问题的评测集。
+## 概述
 
----
-
-## 触发条件
-
-用户无评测集，需 AI 根据已确认的评测场景和评测维度生成问题集。
+本文档定义 `evalset-create.md` 流程的重构设计，将原有"生成完整评测集"简化为"仅生成问题集"。
 
 ---
 
-## 目标
+## 设计背景
 
-生成包含 `question`、`case_id`、`category` 三字段的 JSONL 问题集，供后续评测使用。
+### 原流程问题
+
+原 `evalset-create.md` 流程生成包含 `question`、`answer`、`model`、`case_id` 等完整字段的评测集，但用户实际场景中：
+
+- 用户可能只有问题，无答案
+- 答案需要由推理模型生成，而非 AI 直接生成
+- 原流程强制生成答案导致产物冗余
+
+### 重构目标
+
+简化流程，仅生成包含问题的评测集，答案由后续推理阶段填充。
 
 ---
 
-## 流程步骤概览
+## 需求确认
+
+| 项目 | 确认内容 |
+|------|----------|
+| **产物结构** | `question` + `case_id` + `category` 三字段 JSONL |
+| **生成依据** | 评测场景 + 评测维度 + 按需询问用户 |
+| **询问内容** | 数量 + 类型分布 + 难度分布 + 其他（分类标签 + 示例 + 特殊约束） |
+| **交互方式** | 汇总确认式（一次性收集配置，确认后生成） |
+| **返回点** | 暂不定义，后续合入主流程时确定 |
+
+---
+
+## 流程设计
+
+### 流程步骤概览
 
 ```
 步骤1：确认生成依据（场景+维度）
@@ -31,7 +52,7 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 
 ---
 
-## 步骤1：确认生成依据
+### 步骤1：确认生成依据
 
 **目的**：确保评测场景和评测维度已在前置阶段确认。
 
@@ -49,22 +70,22 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 
 ---
 
-## 步骤2：收集配置并生成
+### 步骤2：收集配置并生成
 
 **目的**：一次性收集生成配置，确认后立即生成问题集。
 
 **使用工具**：`AskUserQuestion`（多问题并行收集）
 
-### 配置收集项
-
-使用 AskUserQuestion 工具一次性收集以下配置：
+**收集的配置项**：
 
 | 项目 | 问题提示 | 默认值 | 是否必填 |
 |------|----------|--------|----------|
 | **数量** | 生成多少条问题？ | 10 | 是 |
 | **类型分布** | 问题类型偏好？ | 均衡分布 | 否 |
 | **难度分布** | 难度偏好？ | 均衡分布 | 否 |
-| **其他选项** | 是否需要更多配置？ | 无 | 否 |
+| **分类标签** | 使用哪些 category 标签？ | 自动生成 | 否 |
+| **示例问题** | 是否提供参考示例？ | 无 | 否 |
+| **特殊约束** | 其他约束要求？ | 无 | 否 |
 
 **类型分布选项**：
 - 均衡分布（默认）
@@ -78,17 +99,21 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 - 偏重中等
 - 偏重困难
 
-**其他选项展开**：
+**分类标签选项**：
+- 自动生成（默认）：AI 根据问题内容自动归类
+- 用户指定：用户提供标签列表，如 `["知识问答", "创意生成", "推荐建议"]`
 
-当用户选择"其他选项"时，展开以下配置：
+**示例问题选项**：
+- 无（默认）
+- 用户提供：用户输入1-2个问题示例
 
-| 子项 | 问题提示 | 默认值 |
-|------|----------|--------|
-| 分类标签 | 使用哪些 category 标签？ | 自动生成 |
-| 示例问题 | 是否提供参考示例？ | 无 |
-| 特殊约束 | 其他约束要求？ | 无 |
+**特殊约束选项**：
+- 无（默认）
+- 用户指定：如长度限制、必须包含关键词等
 
-### 配置确认
+---
+
+**配置确认与生成**：
 
 收集配置后，展示配置摘要供用户确认：
 
@@ -104,12 +129,6 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 是否按此配置生成？(Y/n/调整)
 ```
 
-- **Y** → 开始生成问题集
-- **n** → 流程终止
-- **调整** → 返回配置收集
-
-### 生成问题集
-
 用户确认后，AI 根据配置生成问题集。
 
 **生成要求**：
@@ -121,28 +140,20 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 - 数量 ≤50：主 Agent 直接生成
 - 数量 >50：可选 SubAgent 分批生成
 
-**字段格式**：
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `case_id` | `string` | 是 | 用例唯一标识，格式 `case-{序号}` |
-| `question` | `string` | 是 | 问题内容 |
-| `category` | `string` | 是 | 分类标签 |
-
 ---
 
-## 步骤3：预览与保存
+### 步骤3：预览与保存
 
 **目的**：让用户确认生成的问题集，确认后保存。
 
-**⚠️ 不可跳过**：此步骤必须等待用户确认，不可直接保存。
+**预览内容**：
+- 展示前 3-5 条问题
+- 显示总数量和 category 分布统计
 
-### 预览内容
-
-展示前 3-5 条问题和 category 分布统计：
+**预览示例**：
 
 ```
-生成完成，共 {数量} 条问题：
+生成完成，共 10 条问题：
 
 【预览前5条】
 1. [知识问答] 请解释什么是机器学习？
@@ -161,7 +172,7 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 是否确认保存？(Y/n/重新生成)
 ```
 
-### 用户操作
+**用户操作**：
 
 | 操作 | 动作 |
 |------|------|
@@ -169,8 +180,9 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 | **n（取消）** | → 流程终止 |
 | **重新生成** | → 返回步骤2调整配置 |
 
-### 保存路径
+**⚠️ 不可跳过**：此步骤必须等待用户确认，不可直接保存。
 
+**保存路径**：
 ```
 {work-dir}/.eval/{session-id}/evalset/evalset-prepared.jsonl
 ```
@@ -223,3 +235,21 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 | 用户确认被跳过 | 直接保存未预览 | 步骤3标注 `⚠️ 不可跳过`，必须等待确认 |
 | JSONL 格式无效 | 跨行 JSON 或字段缺失 | 确保每行独立完整 JSON 对象 |
 | case_id 不唯一 | 重复序号 | 确保 case_id 按序递增，无重复 |
+
+---
+
+## 与原流程对比
+
+| 对比项 | 原流程 | 新流程 |
+|------|--------|--------|
+| 产物字段 | question + answer + model + case_id + category + reference | question + case_id + category |
+| 询问内容 | 评测模式 + 数量 + 模型信息 | 数量 + 类型 + 难度 + 其他（简化） |
+| 交互方式 | 顺序询问（多步骤） | 汇总确认（单次收集） |
+| 步骤数 | 5步 | 3步 |
+| 返回点 | 明确返回解析流程 | 暂不定义 |
+
+---
+
+## 待定事项
+
+- **返回点**：后续合入主流程时确定
