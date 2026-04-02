@@ -34,6 +34,7 @@ description: Use when initialization and evaluation standards are configured, ne
 
 | 编号 | 流程名称 | 文档位置 | 调用时机 |
 |------|----------|----------|----------|
+| 流程1 | 问题集生成 | [evalset-create.md](./processes/evalset-create.md) | 任务1步骤1（无评测集分支） |
 | 流程3 | 评测集解析 | [evalset-parse.md](./processes/evalset-parse.md) | 任务1步骤2 |
 | 流程4 | 评测点生成 | [keypoint-process.md](./processes/keypoint-process.md) | 任务1步骤4 |
 
@@ -49,16 +50,23 @@ description: Use when initialization and evaluation standards are configured, ne
 
 ---
 
-#### 步骤1：识别评测集来源
+#### 步骤1：获取评测集路径
 
-**判断**：分析历史对话，查找评测集相关信息。
+**判断**：检查历史对话中是否有文件路径或下载链接。
 
 | 识别结果 | 判断依据 | 后续动作 |
 |----------|----------|----------|
 | 已有评测集 | 文件路径或文件描述 | → 步骤2 |
+| 无评测集 | 用户明确表示没有评测集或需要生成 | → 执行 evalset-create 流程 → 步骤2 |
 | 无法判断 | 无相关信息 | → 询问用户 |
 
+**禁止**：在步骤2执行 analysis 前，不得 Read 文件内容或分析字段。
+
 **询问用户**（无法判断时）：
+
+请问您是否有现成的评测集？
+
+**选项1：提供评测集**
 
 评测集是评测任务的必需数据源，请提供包含问题和答案的评测集文件。
 
@@ -81,7 +89,15 @@ description: Use when initialization and evaluation standards are configured, ne
 {"question": "如何提高代码质量？", "answer": "提高代码质量可以从以下几个方面入手：1. 遵循编码规范...", "model": "gpt-4"}
 ```
 
-> **注意**：若用户未提供评测集，需等待用户提供后方可继续。
+**选项2：生成问题集**
+
+如果您没有评测集，我可以根据已确认的评测场景和维度，帮您生成问题集。
+
+> **前置条件**：需要评测场景和维度已确认（构建配置阶段已完成）。若未完成，系统将引导您先完成构建配置。
+
+请选择：提供评测集 / 生成问题集
+
+> **注意**：若用户选择生成问题集，执行 evalset-create 流程，完成后继续步骤2。
 
 ---
 
@@ -156,6 +172,7 @@ description: Use when initialization and evaluation standards are configured, ne
 
 | 违规行为 | 简洁理由 |
 |----------|----------|
+| 跳过脚本执行直接分析内容 | 字段结构需脚本解析，直觉判断不可靠 |
 | 跳过前置验证 | 评测方式和评委配置影响评测集处理逻辑 |
 | 跳过字段映射确认 | 字段映射必须经用户确认后才能标准化 |
 | 跳过格式验证 | 评测集格式检查可防止上传失败 |

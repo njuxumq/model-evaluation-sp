@@ -19,12 +19,14 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 
 生成包含 `question`、`case_id`、`category` 三字段的 JSONL 问题集，供后续评测使用。
 
+**前置验证**：`eval-dimension.json` 存在。验证失败则提示用户先完成构建配置阶段（eval-build.md）。
+
 ---
 
 ## 流程步骤概览
 
 ```
-步骤1：确认生成依据（场景+维度）
+步骤1：确认生成依据
 步骤2：收集配置并生成（询问 → 确认 → 生成）
 步骤3：预览与保存
 ```
@@ -33,15 +35,13 @@ description: Use when user has no evaluation dataset and needs AI to generate a 
 
 ## 步骤1：确认生成依据
 
-**目的**：确保评测场景和评测维度已在前置阶段确认。
-
-**执行逻辑**：
+**判断**：从 `eval-dimension.json` 中提取评测场景和评测维度。
 
 | 状态 | 判断 | 动作 |
 |------|------|------|
-| 场景+维度均已确认 | 从历史对话获取 | → 进入步骤2 |
-| 场景未确认 | 无相关信息 | → 提示用户先完成场景确认 |
-| 维度未确认 | 无相关信息 | → 提示用户先完成维度配置 |
+| 场景+维度均已确认 | 文件存在且内容有效 | → 进入步骤2 |
+| 场景未确认 | 无场景信息 | → 提示用户先完成场景确认 |
+| 维度未确认 | 无维度信息 | → 提示用户先完成维度配置 |
 
 **输出变量**：
 - `{scene}`：已确认的评测场景描述
