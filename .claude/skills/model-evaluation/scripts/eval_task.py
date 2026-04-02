@@ -34,12 +34,13 @@ def load_inference_models(inference_models_path: str) -> list:
     selected_models = result.get("data", {})
     models = selected_models.get("models", [])
 
-    # 转换为顶层 models 格式
+    # 转换为顶层 models 格式（不含 description，添加 type 默认值）
     return [
         {
             "id": m.get("id"),
             "name": m.get("name"),
-            "model": m.get("model")
+            "model": m.get("model"),
+            "type": m.get("type", "api-openai")
         }
         for m in models
     ]
@@ -122,8 +123,16 @@ def cmd_submit(args):
         inference_models_list = load_inference_models(args.inference_models)
         inference_template = build_inference_template(evalset_id, args.inference_models)
 
-    # 构建评委模型列表
-    judge_models = [judges] if judges else []
+    # 构建评委模型列表（移除 description、concurrency、params 字段）
+    judge_model = {
+        "id": judges.get("id"),
+        "name": judges.get("name"),
+        "type": judges.get("type", "api-openai"),
+        "model": judges.get("model")
+    }
+    # 移除值为 None 的字段
+    judge_model = {k: v for k, v in judge_model.items() if v is not None}
+    judge_models = [judge_model] if judges else []
 
     # 合并模型列表：推理模型 + 评委模型
     all_models = inference_models_list + judge_models
