@@ -26,10 +26,11 @@ user-invocable: false
 | 阶段 | 文档 | 核心任务 |
 |------|------|----------|
 | 初始化 | [eval-init.md](./eval-init.md) | 环境检测、鉴权验证、会话目录 |
-| 构建配置 | [eval-build.md](./eval-build.md) | 场景确认、评测标准确认、评委配置、评测集处理 |
+| 构建配置 | [eval-build.md](./eval-build.md) | 场景确认、评测标准确认、评委配置 |
+| 评测集处理 | [eval-set.md](./eval-set.md) | 评测集解析、标准化、上传 |
 | 执行评测 | [eval-execute.md](./eval-execute.md) | 任务提交、状态监控、结果展示 |
 
-**执行流程**：阶段1 → 阶段2 → 阶段3 → 评测结束
+**执行流程**：阶段1 → 阶段2 → 阶段3 → 阶段4 → 评测结束
 
 ---
 
