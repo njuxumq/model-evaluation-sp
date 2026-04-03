@@ -1,9 +1,9 @@
 ---
 name: evalset-field-validation
-description: Use when evalset-parse determines answer field is filled and needs field validation
+description: Use when eval-set step 2.2 determines answer field is filled and needs field validation (Flow 8)
 ---
 
-# 字段校验流程
+# 流程8：字段校验
 
 检查字段状态 → 处理缺失字段 → 确认评测模式 → 保存配置。
 
@@ -82,6 +82,12 @@ description: Use when evalset-parse determines answer field is filled and needs 
 **目的**：将校验结果（如 model.default、case_id 处理方式）更新到字段映射配置中。
 
 更新 `evalset-fields-mapping.json`，补充校验结果字段。
+
+---
+
+## 返回点
+
+返回评测集处理阶段步骤3（标准化转换）。
 
 ---
 

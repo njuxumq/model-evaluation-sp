@@ -26,8 +26,6 @@ description: Use when eval-build reaches evalset parsing step, or user directly 
 | 编号 | 流程名称 | 文档位置 | 调用时机 |
 |------|----------|----------|----------|
 | 流程3.1 | 标准字段映射 | [evalset-field-mapping.md](./evalset-field-mapping.md) | 步骤3 |
-| 流程3.2 | 推理模型选择 | [evalset-model-selection.md](./evalset-model-selection.md) | 步骤4检测结果为空 |
-| 流程3.3 | 标准字段校验 | [evalset-field-validation.md](./evalset-field-validation.md) | 步骤4检测结果为非空 |
 
 ---
 
@@ -35,7 +33,7 @@ description: Use when eval-build reaches evalset parsing step, or user directly 
 
 | 错误 | 原因 | 解决方案 |
 |------|------|----------|
-| 未执行 check-status 就选择流程 | 凭直觉判断状态 | 必须执行脚本检测，读取 evalset-status.json |
+| 未执行 check-status 就返回 | 凭直觉判断状态 | 必须执行脚本检测，产出 evalset-status.json |
 | 用户未回复时自动继续 | 交互被跳过 | 步骤3、partial 处理必须等待用户确认 |
 | 字段映射未确认就保存 | 流程3.1 确认被跳过 | 确认步骤标注 ⚠️，必须等待用户回复 |
 | 评测集文件格式不支持 | 非 jsonl/csv/xlsx | 提示用户转换为支持的格式 |
@@ -89,7 +87,7 @@ description: Use when eval-build reaches evalset parsing step, or user directly 
 
 ## 步骤4：检测评测集状态
 
-**目的**：判断 answer 字段状态，决定后续处理流程。
+**目的**：判断 answer 字段状态，产出检测结果供调用方决策。
 
 **必须执行脚本检测**，不得凭直觉判断。
 
@@ -100,15 +98,19 @@ description: Use when eval-build reaches evalset parsing step, or user directly 
   --output {work-dir}/.eval/{session-id}/evalset/evalset-status.json
 ```
 
-读取 `evalset-status.json` 中 `answer.status`：
+输出 `evalset-status.json` 中 `answer.status` 可能值：
 
-| status | 后续流程 |
-|--------|----------|
-| `all_empty` | → 流程3.2 |
-| `all_filled` | → 流程3.3 |
-| `partial` | 询问用户 |
+| status | 含义 |
+|--------|------|
+| `all_empty` | answer 字段全空 |
+| `all_filled` | answer 字段全非空 |
+| `partial` | answer 字段部分填充 |
 
-**partial 处理**：询问用户视为"只有问题"或"问题+答案"。
+---
+
+## 返回点
+
+返回调用方（评测集处理阶段步骤2），由调用方根据状态结果决策后续流程。
 
 ---
 

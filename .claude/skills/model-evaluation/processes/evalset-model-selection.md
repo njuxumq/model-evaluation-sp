@@ -1,9 +1,9 @@
 ---
 name: evalset-model-selection
-description: Use when evalset-parse determines answer field is empty and needs model selection
+description: Use when eval-set step 2.2 determines answer field is empty and needs model selection (Flow 7)
 ---
 
-# 推理模型选择流程
+# 流程7：推理模型选择
 
 获取可用推理模型列表，用户分类选择并保存，返回标准化阶段。
 
@@ -160,6 +160,12 @@ answer 字段不存在或全空。
 
 ---
 
+## 返回点
+
+返回评测集处理阶段步骤3（标准化转换）。
+
+---
+
 ## 产物
 
 | 文件 | 用途 |
@@ -174,5 +180,3 @@ answer 字段不存在或全空。
 通用变量见 [SKILL.md 变量速查](../SKILL.md#变量速查)。
 
 ---
-
-**返回**：标准化阶段

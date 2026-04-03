@@ -35,7 +35,9 @@ description: Use when initialization and evaluation standards are configured, ne
 | 编号 | 流程名称 | 文档位置 | 调用时机 |
 |------|----------|----------|----------|
 | 流程1 | 问题集生成 | [evalset-create.md](./processes/evalset-create.md) | 任务1步骤1（无评测集分支） |
-| 流程3 | 评测集解析 | [evalset-parse.md](./processes/evalset-parse.md) | 任务1步骤2 |
+| 流程3 | 评测集解析 | [evalset-parse.md](./processes/evalset-parse.md) | 任务1步骤2.1 |
+| 流程7 | 推理模型选择 | [evalset-model-selection.md](./processes/evalset-model-selection.md) | 任务1步骤2.2（all_empty） |
+| 流程8 | 字段校验 | [evalset-field-validation.md](./processes/evalset-field-validation.md) | 任务1步骤2.2（all_filled） |
 | 流程4 | 评测点生成 | [keypoint-process.md](./processes/keypoint-process.md) | 任务1步骤4 |
 
 ---
@@ -50,7 +52,7 @@ description: Use when initialization and evaluation standards are configured, ne
 
 ---
 
-#### 步骤1：获取评测集路径
+#### 步骤1：获取评测集
 
 **判断**：检查历史对话中是否有文件路径或下载链接。
 
@@ -101,9 +103,30 @@ description: Use when initialization and evaluation standards are configured, ne
 
 ---
 
-#### 步骤2：执行解析流程
+#### 步骤2：解析与状态处理
 
-执行流程3，完成后进入步骤3。
+**执行解析流程**
+
+执行流程3（评测集解析），产出 `evalset-status.json`。
+
+**状态判断与子流程调用**
+
+读取 `evalset-status.json` 中 `answer.status`，按表格执行：
+
+| 状态 | 含义 | 后续处理 |
+|------|------|----------|
+| `all_empty` | answer 全空 | → 执行流程7 → 步骤3 |
+| `all_filled` | answer 全非空 | → 执行流程8 → 步骤3 |
+| `partial` | answer 部分填充 | → 询问用户 → 步骤2.3 |
+
+**partial 分支处理**（按需执行）
+
+询问用户："answer 字段部分填充，请确认评测集类型："
+
+| 选择 | 后续流程 |
+|------|----------|
+| 只有问题 | → 流程7 → 步骤3 |
+| 问题+答案 | → 流程8 → 步骤3 |
 
 ---
 
