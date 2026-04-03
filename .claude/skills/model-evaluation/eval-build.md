@@ -22,21 +22,6 @@ description: Use when initialization completed and need to configure evaluation 
 
 ---
 
-## 阶段概览
-
-**进入阶段时输出**：
-
-```
-📍 当前位置：构建配置阶段
-
-构建配置阶段包含 3 个任务：
-  → 任务1: 确认评测场景
-  ○ 任务2: 确认评测标准
-  ○ 任务3: 确认评委配置
-```
-
----
-
 ## 阶段完成标志
 
 | 验证条件 | 不满足时执行 |

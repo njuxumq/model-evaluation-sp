@@ -20,19 +20,6 @@ description: Use when initialization and evaluation standards are configured, ne
 
 ---
 
-## 阶段概览
-
-**进入阶段时输出**：
-
-```
-📍 当前位置：评测集处理阶段
-
-评测集处理阶段包含 1 个任务：
-  → 任务1: 处理评测集
-```
-
----
-
 ## 阶段完成标志
 
 | 验证条件 | 不满足时执行 |

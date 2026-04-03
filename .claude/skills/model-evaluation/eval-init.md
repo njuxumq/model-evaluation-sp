@@ -19,19 +19,6 @@ description: Use when starting a new evaluation task or resuming an existing one
 
 ---
 
-## 阶段概览
-
-**进入阶段时输出**：
-
-```
-📍 当前位置：初始化阶段
-
-初始化阶段包含 3 个任务：
-  → 任务1: 环境检测
-  ○ 任务2: 鉴权验证
-  ○ 任务3: 会话目录
-```
-
 ---
 
 ## 阶段完成标志
