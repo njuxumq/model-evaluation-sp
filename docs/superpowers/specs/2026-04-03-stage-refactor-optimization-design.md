@@ -212,9 +212,47 @@ metadata:
 
 ## 与 v1 方案对比
 
-| 变更项 | v1 方案 | v2 方案 | 理由 |
+| 变更项 | v1 方案 | v2 方案（已实施） | 理由 |
 |--------|----------|----------|------|
 | 阶段数 | 四阶段 | 三阶段 | 合并冗余阶段 |
-| 新增文件 | checklist.md | 无（复用 writing-guide.md） | 减少维护负担 |
-| Red Flags处理 | Pitfalls 章节 | 合并到"禁止与错误速查" | 去重整合 |
-| 字数目标 | ~80 行 | ~100 行 | 保留必要内容 |
+| 新增文件 | checklist.md | refactor-workflow.md + refactor-checklist.md | 分离流程与检查清单 |
+| Red Flags处理 | Pitfalls 章节 | 合并到"禁止行为"表格 | 去重整合 |
+| 字数目标 | ~80 行 | 主文档 46 行 + references 198 行 | 渐进式披露 |
+
+---
+
+## 实施记录
+
+### 第一阶段：SKILL.md 重构（已完成）
+
+- 主文档从 248 行精简至 46 行
+- 采用审查器模式，定义入口和核心原则
+- 新增 refactor-workflow.md（77 行）承载执行流程
+- 新增 refactor-checklist.md（75 行）承载五维度检查清单
+
+### 第二阶段：references 精简（已完成）
+
+- writing-guide.md 删除"三、检查维度"章节（减少 69 行）
+- 该章节内容与 refactor-checklist.md 重复（重复率 80%+）
+- 删除"判断依据"中的"字数控制"小节（与"字数目标"章节重复）
+- writing-guide.md 从 385 行精简至 316 行
+
+### 最终文件结构
+
+```
+.claude/skills/stage-refactor/
+├── SKILL.md                        # 46 行（主入口）
+└── references/
+    ├── writing-guide.md            # 316 行（书写规范）
+    ├── refactor-workflow.md        # 77 行（执行流程）
+    └── refactor-checklist.md       # 75 行（检查清单）
+```
+
+### 职责分工
+
+| 文件 | 职责 |
+|------|------|
+| SKILL.md | 触发条件、核心原则、入口引用 |
+| writing-guide.md | 宏观结构、细节要求、判断依据、字数目标 |
+| refactor-workflow.md | 三阶段执行流程、门控条件 |
+| refactor-checklist.md | 五维度检查标准 |
