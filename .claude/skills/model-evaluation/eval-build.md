@@ -103,7 +103,7 @@ description: Use when initialization completed and need to configure evaluation 
 | 匹配结果 | 动作 |
 |----------|------|
 | 匹配成功 | 复制模板 → 进入步骤4 |
-| 匹配失败 | → 步骤2 |
+| 匹配失败 | → 进入步骤2 |
 
 **复制命令**：
 ```bash
