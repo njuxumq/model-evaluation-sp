@@ -46,10 +46,6 @@ description: Use when initialization completed and need to configure evaluation 
 
 ### 任务1：确认评测场景
 
-**步骤列表**：
-1. 收集用户需求
-2. 确认场景信息
-
 **目标**：收集用户需求 → 确认评测场景。
 
 ---
@@ -96,23 +92,6 @@ description: Use when initialization completed and need to configure evaluation 
 ---
 
 ### 任务2：确认评测标准
-
-**步骤列表**：
-1. 匹配专家模板
-2. 确定评测方式
-3. 自定义评测配置
-4. 确认配置摘要
-
-**评测方式判断**：
-
-- **定制用例级** → 执行流程5（用例级配置）
-- **通用维度级** → 执行流程6（维度级配置）
-
-**目标**：匹配专家模板 → 自定义配置（按需） → 确认配置摘要。
-
-**输出**：`{work-dir}/.eval/{session-id}/eval-dimension.json`
-
----
 
 #### 步骤1：匹配专家模板
 
@@ -176,10 +155,6 @@ cp {skill-dir}/assets/experts/{template-name}.json {work-dir}/.eval/{session-id}
 ---
 
 ### 任务3：确认评委配置
-
-**步骤列表**：
-1. 检查 eval-judge.json 是否存在
-2. 复制默认配置
 
 #### 步骤1：检查 `eval-judge.json` 是否存在。
 
