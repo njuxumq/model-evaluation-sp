@@ -24,7 +24,7 @@ description: Use when initialization and evaluation standards are configured, ne
 
 | 验证条件 | 不满足时执行 |
 |----------|--------------|
-| `evalset-meta.json` 存在 | 任务1、任务2、任务3、任务4 |
+| `evalset-meta.json` 存在 | 任务1 |
 
 全部通过后，进入执行阶段。
 
@@ -34,35 +34,42 @@ description: Use when initialization and evaluation standards are configured, ne
 
 | 编号 | 流程名称 | 文档位置 | 调用时机 |
 |------|----------|----------|----------|
-| 流程1 | 问题集生成 | [evalset-create.md](./processes/evalset-create.md) | 任务1步骤2（无评测集分支） |
-| 流程3 | 评测集解析 | [evalset-parse.md](./processes/evalset-parse.md) | 任务2步骤1 |
-| 流程7 | 推理模型选择 | [evalset-model-selection.md](./processes/evalset-model-selection.md) | 任务2步骤2（all_empty分支） |
-| 流程8 | 字段校验 | [evalset-field-validation.md](./processes/evalset-field-validation.md) | 任务2步骤2（all_filled分支） |
-| 流程4 | 评测点生成 | [keypoint-process.md](./processes/keypoint-process.md) | 任务3步骤4（定制用例级） |
+| 流程1 | 问题集生成 | [evalset-create.md](./processes/evalset-create.md) | 任务1步骤1（无评测集分支） |
+| 流程3 | 评测集解析 | [evalset-parse.md](./processes/evalset-parse.md) | 任务1步骤2.1 |
+| 流程7 | 推理模型选择 | [evalset-model-selection.md](./processes/evalset-model-selection.md) | 任务1步骤2.2（all_empty） |
+| 流程8 | 字段校验 | [evalset-field-validation.md](./processes/evalset-field-validation.md) | 任务1步骤2.2（all_filled） |
+| 流程4 | 评测点生成 | [keypoint-process.md](./processes/keypoint-process.md) | 任务1步骤4 |
 
 ---
 
 ## 任务列表
 
-### 任务1：获取评测集
+### 任务1：处理评测集
 
-**目标**：判断评测集来源 → 获取评测集文件 → 进入解析阶段。
+**目标**：识别来源 → 解析 → 标准化 → 上传。
 
-**输出**：评测集文件路径或调用 evalset-create 流程。
+**步骤列表**：
+1. 获取评测集
+2. 解析与状态处理
+3. 标准化
+4. 评测点生成（按需）
+5. 上传评测集
+
+**输出**：`{work-dir}/.eval/{session-id}/evalset/evalset-meta.json`
 
 ---
 
-#### 步骤1：判断评测集来源
+#### 步骤1：获取评测集
 
 **判断**：检查历史对话中是否有文件路径或下载链接。
 
 | 识别结果 | 判断依据 | 后续动作 |
 |----------|----------|----------|
-| 已有评测集 | 文件路径或文件描述 | → 任务2 |
-| 无评测集 | 用户明确表示没有评测集或需要生成 | → 步骤2 |
+| 已有评测集 | 文件路径或文件描述 | → 步骤2 |
+| 无评测集 | 用户明确表示没有评测集或需要生成 | → 执行 evalset-create 流程 → 步骤2 |
 | 无法判断 | 无相关信息 | → 询问用户 |
 
-**禁止**：在任务2执行 analysis 前，不得 Read 文件内容或分析字段。
+**禁止**：在步骤2执行 analysis 前，不得 Read 文件内容或分析字段。
 
 **询问用户**（无法判断时）：
 
@@ -99,39 +106,25 @@ description: Use when initialization and evaluation standards are configured, ne
 
 请选择：提供评测集 / 生成问题集
 
----
-
-#### 步骤2：处理无评测集分支
-
-当用户选择生成问题集时，执行流程1（evalset-create），完成后进入任务2。
-
-> **注意**：若用户选择生成问题集，执行 evalset-create 流程，完成后继续任务2。
+> **注意**：若用户选择生成问题集，执行 evalset-create 流程，完成后继续步骤2。
 
 ---
 
-### 任务2：解析与预处理
+#### 步骤2：解析与状态处理
 
-**目标**：解析评测集 → 状态判断 → 执行对应预处理流程。
-
-**输出**：`evalset-status.json` + 流程7/8输出文件。
-
----
-
-#### 步骤1：执行解析流程
+**执行解析流程**
 
 执行流程3（评测集解析），产出 `evalset-status.json`。
 
----
-
-#### 步骤2：状态判断与分支处理
+**状态判断与子流程调用**
 
 读取 `evalset-status.json` 中 `answer.status`，按表格执行：
 
 | 状态 | 含义 | 后续处理 |
 |------|------|----------|
-| `all_empty` | answer 全空 | → 执行流程7 → 任务3 |
-| `all_filled` | answer 全非空 | → 执行流程8 → 任务3 |
-| `partial` | answer 部分填充 | → 询问用户 → 任务3 |
+| `all_empty` | answer 全空 | → 执行流程7 → 步骤3 |
+| `all_filled` | answer 全非空 | → 执行流程8 → 步骤3 |
+| `partial` | answer 部分填充 | → 询问用户 → 步骤2.3 |
 
 **判断结果输出**：
 
@@ -148,31 +141,19 @@ description: Use when initialization and evaluation standards are configured, ne
 
 | 选择 | 后续流程 |
 |------|----------|
-| 只有问题 | → 流程7 → 任务3 |
-| 问题+答案 | → 流程8 → 任务3 |
+| 只有问题 | → 流程7 → 步骤3 |
+| 问题+答案 | → 流程8 → 步骤3 |
 
 ---
 
-### 任务3：标准化与评测点生成
+#### 步骤3：标准化转换
 
-**目标**：标准化转换 → 按需生成评测点。
-
-**输出**：`evalset-standard.jsonl` + `keypoints.json`（按需）。
-
----
-
-#### 步骤1：判断标准化场景
-
-检查解析流程输出文件：
+**判断**：检查解析流程输出文件。
 
 | 输出文件 | 评测集类型 | 标准化命令 |
 |----------|------------|------------|
 | `selected-models.json` 存在 | 只有问题 | `expand` 子命令 |
 | 仅 `evalset-fields-mapping.json` 存在 | 问题+答案 | `normalize` 子命令 |
-
----
-
-#### 步骤2：执行标准化命令
 
 **只有问题场景**：
 
@@ -195,15 +176,15 @@ description: Use when initialization and evaluation standards are configured, ne
 
 ---
 
-#### 步骤3：判断评测方式
+#### 步骤4：评测点生成（按需）
 
-读取 `eval-dimension.json` 检查评测方式：
+**判断**：读取 `eval-dimension.json` 检查评测方式。
 
 | 评测方式 | keypoint 字段状态 | 动作 |
 |----------|-------------------|------|
-| 通用维度级 | - | 跳过 → 任务4 |
-| 定制用例级 | 存在且全部非空 | 跳过 → 任务4 |
-| 定制用例级 | 不存在或部分为空 | → 步骤4 |
+| 通用维度级 | - | 跳过 → 步骤5 |
+| 定制用例级 | 存在且全部非空 | 跳过 → 步骤5 |
+| 定制用例级 | 不存在或部分为空 | 执行流程4 → 步骤5 |
 
 **如何判断评测方式**：
 检查 `eval-dimension.json` 中 `evals` 数组首个元素的 `prompt.keypoints_prompt` 字段：
@@ -214,21 +195,7 @@ description: Use when initialization and evaluation standards are configured, ne
 
 ---
 
-#### 步骤4：执行评测点生成流程
-
-执行流程4（keypoint-process），完成后进入任务4。
-
----
-
-### 任务4：上传评测集
-
-**目标**：上传标准化评测集 → 产出元数据文件。
-
-**输出**：`{work-dir}/.eval/{session-id}/evalset/evalset-meta.json`
-
----
-
-#### 步骤1：执行上传命令
+#### 步骤5：上传评测集
 
 ```bash
 {python-env}{python-cmd} {skill-dir}/scripts/eval_set.py submit \
